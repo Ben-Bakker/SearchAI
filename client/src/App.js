@@ -144,7 +144,7 @@ function App() {
       
       console.log('Sending search request to server:', { query: searchQuery, options: searchOptions });
       
-      const response = await fetch('https://search-ai-server.vercel.app/api/search', {
+      const response = await fetch('https://search-ai-l3g1.vercel.app/api/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
