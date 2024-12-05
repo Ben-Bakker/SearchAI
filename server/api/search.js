@@ -1,16 +1,18 @@
-export const config = {
-  runtime: 'edge',
-  regions: ['fra1']  // Deploy to Frankfurt for better latency from Europe
-};
+const express = require('express');
+const cors = require('cors');
+const TavilyService = require('../services/tavilyService');
+const GroqService = require('../services/groqService');
 
-import TavilyService from '../services/tavilyService';
-import GroqService from '../services/groqService';
+const router = express.Router();
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+// Enable CORS for all routes
+router.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
+router.post('/', async (req, res) => {
   try {
     const { query, options } = req.body;
 
@@ -35,4 +37,6 @@ export default async function handler(req, res) {
     console.error('Search error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
-}
+});
+
+module.exports = router;
