@@ -1,3 +1,5 @@
+import { NextResponse } from 'next/server'
+
 export const config = {
   matcher: '/api/:path*',
 }
@@ -20,17 +22,17 @@ export default function middleware(request) {
   }
 
   // Create response headers with CORS
-  const headers = new Headers({
+  const corsHeaders = {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  })
+  }
 
-  // Clone the request with new headers
+  // Clone the request and add the CORS headers
   const response = NextResponse.next()
   
   // Add the CORS headers to the response
-  Object.entries(headers).forEach(([key, value]) => {
+  Object.entries(corsHeaders).forEach(([key, value]) => {
     response.headers.set(key, value)
   })
 
