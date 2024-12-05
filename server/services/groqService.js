@@ -37,27 +37,34 @@ class GroqService {
         }
     }
 
-    async generateAnswer(searchResults, userQuery) {
+    async generateAnswer(searchResults, query) {
         try {
-            // Prepare context from search results
-            const context = searchResults.results
-                .map(result => `${result.title}\n${result.content}`)
-                .join('\n\n');
+            const systemPrompt = `You are a helpful AI assistant that generates comprehensive answers based on search results. 
+            ALWAYS respond in Russian language.
+            Follow these rules:
+            1. Analyze all search results carefully
+            2. Provide a detailed but concise answer in Russian
+            3. Focus on accuracy and relevance
+            4. If the information is not sufficient, state this clearly
+            5. Cite sources when appropriate
+            6. Keep a neutral and professional tone`;
 
-            const prompt = `Based on the following search results, please provide a comprehensive answer to the question: "${userQuery}"\n\nSearch Results:\n${context}\n\nAnswer:`;
+            const messages = [
+              {
+                role: "system",
+                content: systemPrompt
+              },
+              {
+                role: "user",
+                content: `Search results:\n${searchResults.results.map(result => 
+                  `Title: ${result.title}\nContent: ${result.content}\nURL: ${result.url}\n---\n`
+                ).join('\n')}\n\nBased on these search results, please provide a comprehensive answer in Russian to the query: "${query}"`
+              }
+            ];
 
             const response = await this.client.post('/chat/completions', {
                 model: 'mixtral-8x7b-32768',
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'You are a helpful assistant that provides accurate and concise answers based on search results. Always cite sources when possible.'
-                    },
-                    {
-                        role: 'user',
-                        content: prompt
-                    }
-                ],
+                messages,
                 temperature: 0.7,
                 max_tokens: 1000
             });
