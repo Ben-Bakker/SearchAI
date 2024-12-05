@@ -6,44 +6,18 @@ export const config = {
 import TavilyService from '../services/tavilyService';
 import GroqService from '../services/groqService';
 
-export default async function handler(req) {
-  // Handle CORS
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
-    });
-  }
-
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-    });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const body = await req.json();
-    const { query, options } = body;
+    const { query, options } = req.body;
 
     if (!query || typeof query !== 'string' || query.trim().length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid query. Please provide a non-empty search query.' }), 
-        {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-          },
-        }
-      );
+      return res.status(400).json({ 
+        error: 'Invalid query. Please provide a non-empty search query.' 
+      });
     }
 
     const tavilyService = new TavilyService(process.env.TAVILY_API_KEY);
@@ -56,21 +30,9 @@ export default async function handler(req) {
       searchResults.aiAnswer = aiResponse;
     }
 
-    return new Response(JSON.stringify(searchResults), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-    });
+    return res.json(searchResults);
   } catch (error) {
     console.error('Search error:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-    });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
