@@ -1,58 +1,76 @@
-const TavilyService = require('../services/tavilyService');
-const GroqService = require('../services/groqService');
-const dotenv = require('dotenv');
-
-// Load environment variables
-dotenv.config();
-
-// Initialize services
-const tavilyService = new TavilyService(process.env.TAVILY_API_KEY);
-const groqService = new GroqService(process.env.GROQ_API_KEY);
-
-module.exports = async (req, res) => {
-    // Enable CORS
-    res.setHeader('Access-Control-Allow-Credentials', true);
-    res.setHeader('Access-Control-Allow-Origin', 'https://search-ai-l3g1.vercel.app');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-    // Handle OPTIONS request
-    if (req.method === 'OPTIONS') {
-        res.status(200).end();
-        return;
-    }
-
-    // Handle POST request
-    if (req.method === 'POST') {
-        console.log('Received search request:', req.body);
-        try {
-            const { query, options } = req.body;
-            
-            if (!query || typeof query !== 'string' || query.trim().length === 0) {
-                console.log('Invalid query received:', query);
-                return res.status(400).json({ 
-                    error: 'Invalid query. Please provide a non-empty search query.' 
-                });
-            }
-
-            console.log('Searching with query:', query.trim());
-            const searchResults = await tavilyService.search(query.trim(), options);
-            console.log('Search results received');
-
-            // Generate AI answer if requested
-            if (options?.generateAnswer) {
-                console.log('Generating AI answer...');
-                const aiResponse = await groqService.generateAnswer(searchResults, query.trim());
-                searchResults.aiAnswer = aiResponse;
-                console.log('AI answer generated');
-            }
-
-            res.json(searchResults);
-        } catch (error) {
-            console.error('Search error:', error);
-            res.status(500).json({ error: 'Internal server error' });
-        }
-    } else {
-        res.status(405).json({ error: 'Method not allowed' });
-    }
+export const config = {
+  runtime: 'edge',
+  regions: ['fra1']  // Deploy to Frankfurt for better latency from Europe
 };
+
+import TavilyService from '../services/tavilyService';
+import GroqService from '../services/groqService';
+
+export default async function handler(req) {
+  // Handle CORS
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    });
+  }
+
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
+  }
+
+  try {
+    const body = await req.json();
+    const { query, options } = body;
+
+    if (!query || typeof query !== 'string' || query.trim().length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid query. Please provide a non-empty search query.' }), 
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
+      );
+    }
+
+    const tavilyService = new TavilyService(process.env.TAVILY_API_KEY);
+    const groqService = new GroqService(process.env.GROQ_API_KEY);
+
+    const searchResults = await tavilyService.search(query.trim(), options);
+
+    if (options?.generateAnswer) {
+      const aiResponse = await groqService.generateAnswer(searchResults, query.trim());
+      searchResults.aiAnswer = aiResponse;
+    }
+
+    return new Response(JSON.stringify(searchResults), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
+  } catch (error) {
+    console.error('Search error:', error);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
+  }
+}
